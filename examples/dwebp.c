@@ -44,6 +44,7 @@
 #include "./stopwatch.h"
 
 static int verbose = 0;
+static int quiet = 0;
 #ifndef WEBP_DLL
 #ifdef __cplusplus
 extern "C" {
@@ -509,10 +510,12 @@ static int SaveOutput(const WebPDecBuffer* const buffer,
     fclose(fout);
   }
   if (ok) {
-    if (use_stdout) {
-      fprintf(stderr, "Saved to stdout\n");
-    } else {
-      fprintf(stderr, "Saved file %s\n", out_file);
+    if (!quiet) {
+      if (use_stdout) {
+        fprintf(stderr, "Saved to stdout\n");
+      } else {
+        fprintf(stderr, "Saved file %s\n", out_file);
+      }
     }
     if (verbose) {
       const double write_time = StopwatchReadAndReset(&stop_watch);
@@ -546,19 +549,16 @@ static void Help(void) {
          "  -nofilter .... disable in-loop filtering\n"
          "  -nodither .... disable dithering\n"
          "  -dither <d> .. dithering strength (in 0..100)\n"
-#if WEBP_DECODER_ABI_VERSION > 0x0204
          "  -alpha_dither  use alpha-plane dithering if needed\n"
-#endif
          "  -mt .......... use multi-threading\n"
          "  -crop <x> <y> <w> <h> ... crop output with the given rectangle\n"
-         "  -scale <w> <h> .......... scale the output (*after* any cropping)\n"
-#if WEBP_DECODER_ABI_VERSION > 0x0203
+         "  -resize <w> <h> ......... scale the output (*after* any cropping)\n"
          "  -flip ........ flip the output vertically\n"
-#endif
          "  -alpha ....... only save the alpha plane\n"
          "  -incremental . use incremental decoding (useful for tests)\n"
          "  -h     ....... this help message\n"
          "  -v     ....... verbose (e.g. print encoding/decoding times)\n"
+         "  -quiet ....... quiet mode, don't print anything\n"
 #ifndef WEBP_DLL
          "  -noasm ....... disable all assembly optimizations\n"
 #endif
@@ -607,6 +607,8 @@ int main(int argc, const char *argv[]) {
       format = BMP;
     } else if (!strcmp(argv[c], "-tiff")) {
       format = TIFF;
+    } else if (!strcmp(argv[c], "-quiet")) {
+      quiet = 1;
     } else if (!strcmp(argv[c], "-version")) {
       const int version = WebPGetDecoderVersion();
       printf("%d.%d.%d\n",
@@ -618,10 +620,8 @@ int main(int argc, const char *argv[]) {
       format = YUV;
     } else if (!strcmp(argv[c], "-mt")) {
       config.options.use_threads = 1;
-#if WEBP_DECODER_ABI_VERSION > 0x0204
     } else if (!strcmp(argv[c], "-alpha_dither")) {
       config.options.alpha_dithering_strength = 100;
-#endif
     } else if (!strcmp(argv[c], "-nodither")) {
       config.options.dithering_strength = 0;
     } else if (!strcmp(argv[c], "-dither") && c < argc - 1) {
@@ -633,14 +633,13 @@ int main(int argc, const char *argv[]) {
       config.options.crop_top    = ExUtilGetInt(argv[++c], 0, &parse_error);
       config.options.crop_width  = ExUtilGetInt(argv[++c], 0, &parse_error);
       config.options.crop_height = ExUtilGetInt(argv[++c], 0, &parse_error);
-    } else if (!strcmp(argv[c], "-scale") && c < argc - 2) {
+    } else if ((!strcmp(argv[c], "-scale") || !strcmp(argv[c], "-resize")) &&
+               c < argc - 2) {  // '-scale' is left for compatibility
       config.options.use_scaling = 1;
       config.options.scaled_width  = ExUtilGetInt(argv[++c], 0, &parse_error);
       config.options.scaled_height = ExUtilGetInt(argv[++c], 0, &parse_error);
-#if WEBP_DECODER_ABI_VERSION > 0x0203
     } else if (!strcmp(argv[c], "-flip")) {
       config.options.flip = 1;
-#endif
     } else if (!strcmp(argv[c], "-v")) {
       verbose = 1;
 #ifndef WEBP_DLL
@@ -671,6 +670,8 @@ int main(int argc, const char *argv[]) {
     Help();
     return -1;
   }
+
+  if (quiet) verbose = 0;
 
   {
     VP8StatusCode status = VP8_STATUS_OK;
@@ -728,20 +729,24 @@ int main(int argc, const char *argv[]) {
   }
 
   if (out_file != NULL) {
-    fprintf(stderr, "Decoded %s. Dimensions: %d x %d %s. Format: %s. "
-                    "Now saving...\n",
-            in_file, output_buffer->width, output_buffer->height,
-            bitstream->has_alpha ? " (with alpha)" : "",
-            kFormatType[bitstream->format]);
+    if (!quiet) {
+      fprintf(stderr, "Decoded %s. Dimensions: %d x %d %s. Format: %s. "
+                      "Now saving...\n",
+              in_file, output_buffer->width, output_buffer->height,
+              bitstream->has_alpha ? " (with alpha)" : "",
+              kFormatType[bitstream->format]);
+    }
     ok = SaveOutput(output_buffer, format, out_file);
   } else {
-    fprintf(stderr, "File %s can be decoded "
-                    "(dimensions: %d x %d %s. Format: %s).\n",
-            in_file, output_buffer->width, output_buffer->height,
-            bitstream->has_alpha ? " (with alpha)" : "",
-            kFormatType[bitstream->format]);
-    fprintf(stderr, "Nothing written; "
-                    "use -o flag to save the result as e.g. PNG.\n");
+    if (!quiet) {
+      fprintf(stderr, "File %s can be decoded "
+                      "(dimensions: %d x %d %s. Format: %s).\n",
+              in_file, output_buffer->width, output_buffer->height,
+              bitstream->has_alpha ? " (with alpha)" : "",
+              kFormatType[bitstream->format]);
+      fprintf(stderr, "Nothing written; "
+                      "use -o flag to save the result as e.g. PNG.\n");
+    }
   }
  Exit:
   WebPFreeDecBuffer(output_buffer);

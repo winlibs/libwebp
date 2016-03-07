@@ -38,7 +38,7 @@
 
 #include "./example_util.h"
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && _MSC_VER < 1900
 #define snprintf _snprintf
 #endif
 
@@ -308,19 +308,24 @@ static void HandleDisplay(void) {
     //              they will be incorrect if the window is resized.
     // glScissor() takes window coordinates (0,0 at bottom left).
     int window_x, window_y;
+    int frame_w, frame_h;
     if (prev->dispose_method == WEBP_MUX_DISPOSE_BACKGROUND) {
       // Clear the previous frame rectangle.
       window_x = prev->x_offset;
       window_y = kParams.canvas_height - prev->y_offset - prev->height;
+      frame_w = prev->width;
+      frame_h = prev->height;
     } else {  // curr->blend_method == WEBP_MUX_NO_BLEND.
       // We simulate no-blending behavior by first clearing the current frame
       // rectangle (to a checker-board) and then alpha-blending against it.
       window_x = curr->x_offset;
       window_y = kParams.canvas_height - curr->y_offset - curr->height;
+      frame_w = curr->width;
+      frame_h = curr->height;
     }
     glEnable(GL_SCISSOR_TEST);
     // Only update the requested area, not the whole canvas.
-    glScissor(window_x, window_y, prev->width, prev->height);
+    glScissor(window_x, window_y, frame_w, frame_h);
 
     glClear(GL_COLOR_BUFFER_BIT);  // use clear color
     DrawCheckerBoard();
@@ -387,9 +392,7 @@ static void Help(void) {
          "  -nofancy ..... don't use the fancy YUV420 upscaler\n"
          "  -nofilter .... disable in-loop filtering\n"
          "  -dither <int>  dithering strength (0..100), default=50\n"
-#if WEBP_DECODER_ABI_VERSION > 0x0204
          "  -noalphadither disable alpha plane dithering\n"
-#endif
          "  -mt .......... use multi-threading\n"
          "  -info ........ print info\n"
          "  -h     ....... this help message\n"
@@ -411,9 +414,7 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   config->options.dithering_strength = 50;
-#if WEBP_DECODER_ABI_VERSION > 0x0204
   config->options.alpha_dithering_strength = 100;
-#endif
   kParams.use_color_profile = 1;
 
   for (c = 1; c < argc; ++c) {
@@ -427,10 +428,8 @@ int main(int argc, char *argv[]) {
       config->options.no_fancy_upsampling = 1;
     } else if (!strcmp(argv[c], "-nofilter")) {
       config->options.bypass_filtering = 1;
-#if WEBP_DECODER_ABI_VERSION > 0x0204
     } else if (!strcmp(argv[c], "-noalphadither")) {
       config->options.alpha_dithering_strength = 0;
-#endif
     } else if (!strcmp(argv[c], "-dither") && c + 1 < argc) {
       config->options.dithering_strength =
           ExUtilGetInt(argv[++c], 0, &parse_error);
@@ -526,6 +525,12 @@ int main(int argc, char *argv[]) {
   // We take this into account by bumping up loop_count.
   WebPDemuxGetFrame(kParams.dmux, 0, curr);
   if (kParams.loop_count) ++kParams.loop_count;
+
+#if defined(__unix__) || defined(__CYGWIN__)
+  // Work around GLUT compositor bug.
+  // https://bugs.launchpad.net/ubuntu/+source/freeglut/+bug/369891
+  setenv("XLIB_SKIP_ARGB_VISUALS", "1", 1);
+#endif
 
   // Start display (and timer)
   glutInit(&argc, argv);

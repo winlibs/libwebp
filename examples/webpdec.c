@@ -19,11 +19,10 @@
 #include "./example_util.h"
 #include "./metadata.h"
 
-int ReadWebP(const char* const in_file, WebPPicture* const pic,
+int ReadWebP(const uint8_t* const data, size_t data_size,
+             WebPPicture* const pic,
              int keep_alpha, Metadata* const metadata) {
   int ok = 0;
-  size_t data_size = 0;
-  const uint8_t* data = NULL;
   VP8StatusCode status = VP8_STATUS_OK;
   WebPDecoderConfig config;
   WebPDecBuffer* const output_buffer = &config.output;
@@ -39,8 +38,15 @@ int ReadWebP(const char* const in_file, WebPPicture* const pic,
     return 0;
   }
 
-  if (ExUtilLoadWebP(in_file, &data, &data_size, bitstream)) {
+  status = WebPGetFeatures(data, data_size, bitstream);
+  if (status != VP8_STATUS_OK) {
+    ExUtilPrintWebPError("input data", status);
+    return 0;
+  }
+  {
     const int has_alpha = keep_alpha && bitstream->has_alpha;
+    // TODO(skal): use MODE_YUV(A), depending on the expected
+    // input pic->use_argb. This would save some conversion steps.
     output_buffer->colorspace = has_alpha ? MODE_RGBA : MODE_RGB;
 
     status = ExUtilDecodeWebP(data, data_size, 0, &config);
@@ -49,17 +55,15 @@ int ReadWebP(const char* const in_file, WebPPicture* const pic,
       const int stride = output_buffer->u.RGBA.stride;
       pic->width = output_buffer->width;
       pic->height = output_buffer->height;
-      pic->use_argb = 1;
       ok = has_alpha ? WebPPictureImportRGBA(pic, rgba, stride)
                      : WebPPictureImportRGB(pic, rgba, stride);
     }
   }
 
   if (status != VP8_STATUS_OK) {
-    ExUtilPrintWebPError(in_file, status);
+    ExUtilPrintWebPError("input data", status);
   }
 
-  free((void*)data);
   WebPFreeDecBuffer(output_buffer);
   return ok;
 }
