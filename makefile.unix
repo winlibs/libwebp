@@ -89,6 +89,14 @@ endif
 # EXTRA_FLAGS += -march=armv7-a -mfloat-abi=hard -mfpu=neon -mtune=cortex-a8
 # -> seems to make the overall lib slower: -fno-split-wide-types
 
+# MIPS (MSA) 32-bit build specific flags for mips32r5 (p5600):
+# EXTRA_FLAGS += -mips32r5 -mabi=32 -mtune=p5600 -mmsa -mfp64
+# EXTRA_FLAGS += -msched-weight -mload-store-pairs
+
+# MIPS (MSA) 64-bit build specific flags for mips64r6 (i6400):
+# EXTRA_FLAGS += -mips64r6 -mabi=64 -mtune=i6400 -mmsa -mfp64
+# EXTRA_FLAGS += -msched-weight -mload-store-pairs
+
 #### Nothing should normally be changed below this line ####
 
 AR = ar
@@ -130,6 +138,7 @@ DSP_DEC_OBJS = \
     src/dsp/dec_clip_tables.o \
     src/dsp/dec_mips32.o \
     src/dsp/dec_mips_dsp_r2.o \
+    src/dsp/dec_msa.o \
     src/dsp/dec_neon.o \
     src/dsp/dec_sse2.o \
     src/dsp/dec_sse41.o \
@@ -201,6 +210,7 @@ ENC_OBJS = \
     src/enc/webpenc.o \
 
 EX_FORMAT_DEC_OBJS = \
+    examples/image_dec.o \
     examples/jpegdec.o \
     examples/metadata.o \
     examples/pngdec.o \
@@ -260,9 +270,11 @@ HDRS = \
     src/dec/vp8i.h \
     src/dec/vp8li.h \
     src/dec/webpi.h \
+    src/dsp/common_sse2.h \
     src/dsp/dsp.h \
     src/dsp/lossless.h \
     src/dsp/mips_macro.h \
+    src/dsp/msa_macro.h \
     src/dsp/neon.h \
     src/dsp/yuv.h \
     src/enc/backward_references.h \
@@ -320,6 +332,7 @@ src/utils/bit_writer.o: src/utils/endian_inl.h
 	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
 
 examples/libanim_util.a: $(ANIM_UTIL_OBJS)
+examples/libexample_dec.a: $(EX_FORMAT_DEC_OBJS)
 examples/libexample_util.a: $(EX_UTIL_OBJS)
 examples/libgifdec.a: $(GIFDEC_OBJS)
 src/libwebpdecoder.a: $(LIBWEBPDECODER_OBJS)
@@ -332,7 +345,7 @@ src/libwebpextras.a: $(LIBWEBPEXTRA_OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
 examples/anim_diff: examples/anim_diff.o $(ANIM_UTIL_OBJS) $(GIFDEC_OBJS)
-examples/cwebp: examples/cwebp.o $(EX_FORMAT_DEC_OBJS)
+examples/cwebp: examples/cwebp.o
 examples/dwebp: examples/dwebp.o
 examples/gif2webp: examples/gif2webp.o $(GIFDEC_OBJS)
 examples/vwebp: examples/vwebp.o
@@ -343,7 +356,8 @@ examples/anim_diff: src/demux/libwebpdemux.a examples/libexample_util.a
 examples/anim_diff: src/libwebp.a
 examples/anim_diff: EXTRA_LIBS += $(GIF_LIBS)
 examples/anim_diff: EXTRA_FLAGS += -DWEBP_HAVE_GIF
-examples/cwebp: examples/libexample_util.a src/libwebp.a
+examples/cwebp: examples/libexample_util.a examples/libexample_dec.a
+examples/cwebp: src/libwebp.a
 examples/cwebp: EXTRA_LIBS += $(CWEBP_LIBS)
 examples/dwebp: examples/libexample_util.a src/libwebpdecoder.a
 examples/dwebp: EXTRA_LIBS += $(DWEBP_LIBS)

@@ -20,17 +20,10 @@
 #include "webp/config.h"
 #endif
 
-#include "webp/encode.h"
-
 #include "./example_util.h"
-#include "./metadata.h"
+#include "./image_dec.h"
 #include "./stopwatch.h"
-
-#include "./jpegdec.h"
-#include "./pngdec.h"
-#include "./tiffdec.h"
-#include "./webpdec.h"
-#include "./wicdec.h"
+#include "webp/encode.h"
 
 #ifndef WEBP_DLL
 #ifdef __cplusplus
@@ -50,13 +43,12 @@ static int verbose = 0;
 
 static int ReadYUV(const uint8_t* const data, size_t data_size,
                    WebPPicture* const pic) {
-  int y;
   const int use_argb = pic->use_argb;
   const int uv_width = (pic->width + 1) / 2;
   const int uv_height = (pic->height + 1) / 2;
+  const int y_plane_size = pic->width * pic->height;
   const int uv_plane_size = uv_width * uv_height;
-  const size_t expected_data_size =
-      pic->width * pic->height + 2 * uv_plane_size;
+  const size_t expected_data_size = y_plane_size + 2 * uv_plane_size;
 
   if (data_size != expected_data_size) {
     fprintf(stderr,
@@ -67,18 +59,12 @@ static int ReadYUV(const uint8_t* const data, size_t data_size,
 
   pic->use_argb = 0;
   if (!WebPPictureAlloc(pic)) return 0;
-
-  for (y = 0; y < pic->height; ++y) {
-    memcpy(pic->y + y * pic->y_stride, data + y * pic->width,
-           pic->width * sizeof(*pic->y));
-  }
-  for (y = 0; y < uv_height; ++y) {
-    const uint8_t* const uv_data = data + pic->height * pic->y_stride;
-    memcpy(pic->u + y * pic->uv_stride, uv_data + y * uv_width,
-           uv_width * sizeof(*uv_data));
-    memcpy(pic->v + y * pic->uv_stride, uv_data + y * uv_width + uv_plane_size,
-           uv_width * sizeof(*uv_data));
-  }
+  ExUtilCopyPlane(data, pic->width, pic->y, pic->y_stride,
+                  pic->width, pic->height);
+  ExUtilCopyPlane(data + y_plane_size, uv_width,
+                  pic->u, pic->uv_stride, uv_width, uv_height);
+  ExUtilCopyPlane(data + y_plane_size + uv_plane_size, uv_width,
+                  pic->v, pic->uv_stride, uv_width, uv_height);
   return use_argb ? WebPPictureYUVAToARGB(pic) : 1;
 }
 
@@ -109,34 +95,6 @@ static int ReadPicture(const char* const filename, WebPPicture* const pic,
 
 #else  // !HAVE_WINCODEC_H
 
-typedef enum {
-  PNG_ = 0,
-  JPEG_,
-  TIFF_,  // 'TIFF' clashes with libtiff
-  WEBP_,
-  UNSUPPORTED
-} InputFileFormat;
-
-static uint32_t GetBE32(const uint8_t buf[]) {
-  return ((uint32_t)buf[0] << 24) | (buf[1] << 16) | (buf[2] << 8) | buf[3];
-}
-
-static InputFileFormat GuessImageType(const uint8_t buf[12]) {
-  InputFileFormat format = UNSUPPORTED;
-  const uint32_t magic1 = GetBE32(buf + 0);
-  const uint32_t magic2 = GetBE32(buf + 8);
-  if (magic1 == 0x89504E47U) {
-    format = PNG_;
-  } else if (magic1 >= 0xFFD8FF00U && magic1 <= 0xFFD8FFFFU) {
-    format = JPEG_;
-  } else if (magic1 == 0x49492A00 || magic1 == 0x4D4D002A) {
-    format = TIFF_;
-  } else if (magic1 == 0x52494646 && magic2 == 0x57454250) {
-    format = WEBP_;
-  }
-  return format;
-}
-
 static int ReadPicture(const char* const filename, WebPPicture* const pic,
                        int keep_alpha, Metadata* const metadata) {
   const uint8_t* data = NULL;
@@ -147,19 +105,8 @@ static int ReadPicture(const char* const filename, WebPPicture* const pic,
   if (!ok) goto End;
 
   if (pic->width == 0 || pic->height == 0) {
-    ok = 0;
-    if (data_size >= 12) {
-      const InputFileFormat format = GuessImageType(data);
-      if (format == PNG_) {
-        ok = ReadPNG(data, data_size, pic, keep_alpha, metadata);
-      } else if (format == JPEG_) {
-        ok = ReadJPEG(data, data_size, pic, metadata);
-      } else if (format == TIFF_) {
-        ok = ReadTIFF(data, data_size, pic, keep_alpha, metadata);
-      } else if (format == WEBP_) {
-        ok = ReadWebP(data, data_size, pic, keep_alpha, metadata);
-      }
-    }
+    WebPImageReader reader = WebPGuessImageReader(data, data_size);
+    ok = (reader != NULL) && reader(data, data_size, pic, keep_alpha, metadata);
   } else {
     // If image size is specified, infer it as YUV format.
     ok = ReadYUV(data, data_size, pic);
@@ -567,8 +514,8 @@ static void HelpLong(void) {
   printf("Windows builds can take as input any of the files handled by WIC.\n");
 #endif
   printf("\nOptions:\n");
-  printf("  -h / -help  ............ short help\n");
-  printf("  -H / -longhelp  ........ long help\n");
+  printf("  -h / -help ............. short help\n");
+  printf("  -H / -longhelp ......... long help\n");
   printf("  -q <float> ............. quality factor (0:small..100:big)\n");
   printf("  -alpha_q <int> ......... transparency-compression quality "
          "(0..100)\n");
@@ -971,6 +918,11 @@ int main(int argc, const char *argv[]) {
       fprintf(stderr, "Partition limit option is not required for lossless"
                       " encoding. Ignoring this option!\n");
     }
+  }
+  // If a target size or PSNR was given, but somehow the -pass option was
+  // omitted, force a reasonable value.
+  if (config.target_size > 0 || config.target_PSNR > 0) {
+    if (config.pass == 1) config.pass = 6;
   }
 
   if (!WebPValidateConfig(&config)) {
