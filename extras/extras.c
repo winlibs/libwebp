@@ -10,7 +10,7 @@
 //  Additional WebP utilities.
 //
 
-#include "./extras.h"
+#include "extras/extras.h"
 #include "webp/format_constants.h"
 
 #include <assert.h>
@@ -18,7 +18,7 @@
 
 #define XTRA_MAJ_VERSION 0
 #define XTRA_MIN_VERSION 1
-#define XTRA_REV_VERSION 0
+#define XTRA_REV_VERSION 1
 
 //------------------------------------------------------------------------------
 

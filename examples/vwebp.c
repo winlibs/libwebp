@@ -248,9 +248,9 @@ static void HandleKey(unsigned char key, int pos_x, int pos_y) {
       }
     }
   } else if (key == 'i') {
+    // Note: doesn't handle refresh of animation's last-frame (it's quite
+    // more involved to do, since you need to save the previous frame).
     kParams.print_info = 1 - kParams.print_info;
-    // TODO(skal): handle refresh of animation's last-frame too. It's quite
-    // more involved though (need to save the previous frame).
     if (!kParams.has_animation) ClearPreviousFrame();
     glutPostRedisplay();
   } else if (key == 'd') {
@@ -260,8 +260,8 @@ static void HandleKey(unsigned char key, int pos_x, int pos_y) {
 }
 
 static void HandleReshape(int width, int height) {
-  // TODO(skal): should we preserve aspect ratio?
-  // Also: handle larger-than-screen pictures correctly.
+  // Note: reshape doesn't preserve aspect ratio, and might
+  // be handling larger-than-screen pictures incorrectly.
   glViewport(0, 0, width, height);
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
@@ -378,13 +378,23 @@ static void HandleDisplay(void) {
     }
   }
   glPopMatrix();
+#if defined(__APPLE__) || defined(_WIN32)
   glFlush();
+#else
+  glutSwapBuffers();
+#endif
 }
 
 static void StartDisplay(void) {
   const int width = kParams.canvas_width;
   const int height = kParams.canvas_height;
+  // TODO(webp:365) GLUT_DOUBLE results in flickering / old frames to be
+  // partially displayed with animated webp + alpha.
+#if defined(__APPLE__) || defined(_WIN32)
   glutInitDisplayMode(GLUT_RGBA);
+#else
+  glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+#endif
   glutInitWindowSize(width, height);
   glutCreateWindow("WebP viewer");
   glutDisplayFunc(HandleDisplay);
