@@ -89,12 +89,6 @@ EXTRA_FLAGS += -DWEBP_HAVE_SSE41
 src/dsp/%_sse41.o: EXTRA_FLAGS += -msse4.1
 endif
 
-# AVX2-specific flags:
-ifeq ($(HAVE_AVX2), 1)
-EXTRA_FLAGS += -DWEBP_HAVE_AVX2
-src/dsp/%_avx2.o: EXTRA_FLAGS += -mavx2
-endif
-
 # NEON-specific flags:
 # EXTRA_FLAGS += -march=armv7-a -mfloat-abi=hard -mfpu=neon -mtune=cortex-a8
 # -> seems to make the overall lib slower: -fno-split-wide-types
@@ -123,6 +117,10 @@ INSTALL = install
 GROFF = /usr/bin/groff
 COL = /usr/bin/col
 LDFLAGS = $(EXTRA_LIBS) $(EXTRA_FLAGS) -lm
+
+ifdef BITTRACE
+CFLAGS += -DBITTRACE=$(BITTRACE)
+endif
 
 ANIM_UTIL_OBJS = \
     examples/anim_util.o \
@@ -191,9 +189,9 @@ DSP_ENC_OBJS = \
     src/dsp/cost.o \
     src/dsp/cost_mips32.o \
     src/dsp/cost_mips_dsp_r2.o \
+    src/dsp/cost_neon.o \
     src/dsp/cost_sse2.o \
     src/dsp/enc.o \
-    src/dsp/enc_avx2.o \
     src/dsp/enc_mips32.o \
     src/dsp/enc_mips_dsp_r2.o \
     src/dsp/enc_msa.o \
@@ -392,7 +390,7 @@ src/demux/libwebpdemux.a: $(LIBWEBPDEMUX_OBJS)
 	$(AR) $(ARFLAGS) $@ $^
 
 examples/anim_diff: examples/anim_diff.o $(ANIM_UTIL_OBJS) $(GIFDEC_OBJS)
-examples/anim_dump: examples/anim_dump.o $(ANIM_UTIL_OBJS)
+examples/anim_dump: examples/anim_dump.o $(ANIM_UTIL_OBJS) $(GIFDEC_OBJS)
 examples/cwebp: examples/cwebp.o
 examples/dwebp: examples/dwebp.o
 examples/gif2webp: examples/gif2webp.o $(GIFDEC_OBJS)
@@ -404,35 +402,35 @@ examples/webpinfo: examples/webpinfo.o
 examples/anim_diff: examples/libanim_util.a examples/libgifdec.a
 examples/anim_diff: src/demux/libwebpdemux.a examples/libexample_util.a
 examples/anim_diff: imageio/libimageio_util.a src/libwebp.a
-examples/anim_diff: EXTRA_LIBS += $(GIF_LIBS)
+examples/anim_diff: override EXTRA_LIBS += $(GIF_LIBS)
 examples/anim_diff: EXTRA_FLAGS += -DWEBP_HAVE_GIF
-examples/anim_dump: examples/libanim_util.a
+examples/anim_dump: examples/libanim_util.a examples/libgifdec.a
 examples/anim_dump: src/demux/libwebpdemux.a
 examples/anim_dump: examples/libexample_util.a
 examples/anim_dump: imageio/libimageio_util.a
 examples/anim_dump: imageio/libimageenc.a
 examples/anim_dump: src/libwebp.a
-examples/anim_dump: EXTRA_LIBS += $(GIF_LIBS) $(DWEBP_LIBS)
+examples/anim_dump: override EXTRA_LIBS += $(GIF_LIBS) $(DWEBP_LIBS)
 examples/cwebp: examples/libexample_util.a
 examples/cwebp: imageio/libimagedec.a
 examples/cwebp: src/demux/libwebpdemux.a
 examples/cwebp: imageio/libimageio_util.a
 examples/cwebp: src/libwebp.a
-examples/cwebp: EXTRA_LIBS += $(CWEBP_LIBS)
+examples/cwebp: override EXTRA_LIBS += $(CWEBP_LIBS)
 examples/dwebp: examples/libexample_util.a
 examples/dwebp: imageio/libimagedec.a
 examples/dwebp: src/demux/libwebpdemux.a
 examples/dwebp: imageio/libimageenc.a
 examples/dwebp: imageio/libimageio_util.a
 examples/dwebp: src/libwebp.a
-examples/dwebp: EXTRA_LIBS += $(DWEBP_LIBS)
+examples/dwebp: override EXTRA_LIBS += $(DWEBP_LIBS)
 examples/gif2webp: examples/libexample_util.a imageio/libimageio_util.a
 examples/gif2webp: examples/libgifdec.a src/mux/libwebpmux.a src/libwebp.a
-examples/gif2webp: EXTRA_LIBS += $(GIF_LIBS)
+examples/gif2webp: override EXTRA_LIBS += $(GIF_LIBS)
 examples/gif2webp: EXTRA_FLAGS += -DWEBP_HAVE_GIF
 examples/vwebp: examples/libexample_util.a src/demux/libwebpdemux.a
 examples/vwebp: imageio/libimageio_util.a src/libwebp.a
-examples/vwebp: EXTRA_LIBS += $(GL_LIBS)
+examples/vwebp: override EXTRA_LIBS += $(GL_LIBS)
 examples/vwebp: EXTRA_FLAGS += -DWEBP_HAVE_GL
 examples/webpmux: examples/libexample_util.a imageio/libimageio_util.a
 examples/webpmux: src/mux/libwebpmux.a src/libwebpdecoder.a
@@ -440,7 +438,7 @@ examples/img2webp: examples/libexample_util.a imageio/libimageio_util.a
 examples/img2webp: imageio/libimagedec.a
 examples/img2webp: src/demux/libwebpdemux.a
 examples/img2webp: src/mux/libwebpmux.a src/libwebp.a
-examples/img2webp: EXTRA_LIBS += $(CWEBP_LIBS)
+examples/img2webp: override EXTRA_LIBS += $(CWEBP_LIBS)
 examples/webpinfo: examples/libexample_util.a imageio/libimageio_util.a
 examples/webpinfo: src/libwebpdecoder.a
 
@@ -449,7 +447,7 @@ extras/get_disto: imageio/libimagedec.a
 extras/get_disto: src/demux/libwebpdemux.a
 extras/get_disto: imageio/libimageio_util.a
 extras/get_disto: src/libwebp.a
-extras/get_disto: EXTRA_LIBS += $(CWEBP_LIBS)
+extras/get_disto: override EXTRA_LIBS += $(CWEBP_LIBS)
 
 extras/webp_quality: extras/webp_quality.o
 extras/webp_quality: imageio/libimageio_util.a
@@ -460,7 +458,7 @@ extras/vwebp_sdl: extras/webp_to_sdl.o
 extras/vwebp_sdl: imageio/libimageio_util.a
 extras/vwebp_sdl: src/libwebp.a
 extras/vwebp_sdl: EXTRA_FLAGS += -DWEBP_HAVE_SDL $(SDL_FLAGS)
-extras/vwebp_sdl: EXTRA_LIBS += $(SDL_LIBS)
+extras/vwebp_sdl: override EXTRA_LIBS += $(SDL_LIBS)
 
 $(OUT_EXAMPLES) $(EXTRA_EXAMPLES) $(OTHER_EXAMPLES):
 	$(CC) -o $@ $^ $(LDFLAGS)
