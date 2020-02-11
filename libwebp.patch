@@ -1,0 +1,22 @@
+ Makefile.vc | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/Makefile.vc b/Makefile.vc
+index 886f981..54f0ac1 100644
+--- a/Makefile.vc
++++ b/Makefile.vc
+@@ -1,10 +1,10 @@
+ #
+ # Stem for static libs and DLLs
+ #
+-LIBWEBPDECODER_BASENAME = libwebpdecoder
+-LIBWEBP_BASENAME = libwebp
+-LIBWEBPMUX_BASENAME = libwebpmux
+-LIBWEBPDEMUX_BASENAME = libwebpdemux
++LIBWEBPDECODER_BASENAME = libwebpdecoder_a
++LIBWEBP_BASENAME = libwebp_a
++LIBWEBPMUX_BASENAME = libwebpmux_a
++LIBWEBPDEMUX_BASENAME = libwebpdemux_a
+ 
+ !IFNDEF ARCH
+ !IF ! [ cl 2>&1 | find "x86" > NUL ]
