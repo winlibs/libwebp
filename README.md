@@ -6,7 +6,7 @@
 
 * `cd` into the directory
 
-* `nmake /f Makefile.vc CFG=release-static RTLIBCFG=static OBJDIR=output`  
-  `nmake /f Makefile.vc CFG=debug-static RTLIBCFG=static OBJDIR=output`
+* `nmake /f Makefile.vc CFG=release-static RTLIBCFG=dynamic OBJDIR=output`  
+  `nmake /f Makefile.vc CFG=debug-static RTLIBCFG=dynamic OBJDIR=output`
 
 Find the build in output\\\*-static\x??\
