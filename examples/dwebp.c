@@ -76,7 +76,8 @@ static int SaveOutput(const WebPDecBuffer* const buffer,
 
 static void Help(void) {
   printf("Usage: dwebp in_file [options] [-o out_file]\n\n"
-         "Decodes the WebP image file to PNG format [Default]\n"
+         "Decodes the WebP image file to PNG format [Default].\n"
+         "Note: Animated WebP files are not supported.\n\n"
          "Use following options to convert into alternate image formats:\n"
          "  -pam ......... save the raw RGBA samples as a color PAM\n"
          "  -ppm ......... save the raw RGB samples as a color PPM\n"
@@ -95,7 +96,7 @@ static void Help(void) {
          "  -alpha_dither  use alpha-plane dithering if needed\n"
          "  -mt .......... use multi-threading\n"
          "  -crop <x> <y> <w> <h> ... crop output with the given rectangle\n"
-         "  -resize <w> <h> ......... scale the output (*after* any cropping)\n"
+         "  -resize <w> <h> ......... resize output (*after* any cropping)\n"
          "  -flip ........ flip the output vertically\n"
          "  -alpha ....... only save the alpha plane\n"
          "  -incremental . use incremental decoding (useful for tests)\n"
