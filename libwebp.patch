@@ -1,11 +1,8 @@
- Makefile.vc | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
 diff --git a/Makefile.vc b/Makefile.vc
-index 886f981..54f0ac1 100644
+index cb6b7a9..78fdac0 100644
 --- a/Makefile.vc
 +++ b/Makefile.vc
-@@ -1,10 +1,10 @@
+@@ -1,11 +1,11 @@
  #
  # Stem for static libs and DLLs
  #
@@ -13,10 +10,39 @@ index 886f981..54f0ac1 100644
 -LIBWEBP_BASENAME = libwebp
 -LIBWEBPMUX_BASENAME = libwebpmux
 -LIBWEBPDEMUX_BASENAME = libwebpdemux
+-LIBSHARPYUV_BASENAME = libsharpyuv
 +LIBWEBPDECODER_BASENAME = libwebpdecoder_a
 +LIBWEBP_BASENAME = libwebp_a
 +LIBWEBPMUX_BASENAME = libwebpmux_a
 +LIBWEBPDEMUX_BASENAME = libwebpdemux_a
++LIBSHARPYUV_BASENAME = libsharpyuv_a
  
  !IFNDEF ARCH
  !IF ! [ cl 2>&1 | find "x86" > NUL ]
+diff --git a/libwebp.patch b/libwebp.patch
+index 70ec0f8..e69de29 100644
+--- a/libwebp.patch
++++ b/libwebp.patch
+@@ -1,22 +0,0 @@
+- Makefile.vc | 8 ++++----
+- 1 file changed, 4 insertions(+), 4 deletions(-)
+-
+-diff --git a/Makefile.vc b/Makefile.vc
+-index 886f981..54f0ac1 100644
+---- a/Makefile.vc
+-+++ b/Makefile.vc
+-@@ -1,10 +1,10 @@
+- #
+- # Stem for static libs and DLLs
+- #
+--LIBWEBPDECODER_BASENAME = libwebpdecoder
+--LIBWEBP_BASENAME = libwebp
+--LIBWEBPMUX_BASENAME = libwebpmux
+--LIBWEBPDEMUX_BASENAME = libwebpdemux
+-+LIBWEBPDECODER_BASENAME = libwebpdecoder_a
+-+LIBWEBP_BASENAME = libwebp_a
+-+LIBWEBPMUX_BASENAME = libwebpmux_a
+-+LIBWEBPDEMUX_BASENAME = libwebpdemux_a
+- 
+- !IFNDEF ARCH
+- !IF ! [ cl 2>&1 | find "x86" > NUL ]
