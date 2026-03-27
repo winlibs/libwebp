@@ -1,11 +1,11 @@
 #
 # Stem for static libs and DLLs
 #
-LIBWEBPDECODER_BASENAME = libwebpdecoder
-LIBWEBP_BASENAME = libwebp
-LIBWEBPMUX_BASENAME = libwebpmux
-LIBWEBPDEMUX_BASENAME = libwebpdemux
-LIBSHARPYUV_BASENAME = libsharpyuv
+LIBWEBPDECODER_BASENAME = libwebpdecoder_a
+LIBWEBP_BASENAME = libwebp_a
+LIBWEBPMUX_BASENAME = libwebpmux_a
+LIBWEBPDEMUX_BASENAME = libwebpdemux_a
+LIBSHARPYUV_BASENAME = libsharpyuv_a
 
 !IFNDEF ARCH
 !IF ! [ cl 2>&1 | find "x86" > NUL ]
